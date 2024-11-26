@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { RateLimiter } from '@/utils/rateLimit';
+import { RateLimitError } from '@/utils/errors';
 
 const openai = new OpenAI({
   apiKey: process.env.OPEN_AI_API_KEY,
@@ -7,6 +9,16 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
+    const rateLimiter = RateLimiter.getInstance();
+    
+    // Check rate limit before proceeding
+    const canProceed = await rateLimiter.checkLimit('openai');
+    if (!canProceed) {
+      const { remaining, total } = rateLimiter.getQuotaInfo('openai');
+      const resetTime = rateLimiter.getResetTime('openai');
+      throw new RateLimitError('openai', resetTime, remaining, total);
+    }
+
     const { enhancedArticle, videoTitle } = await request.json();
 
     if (!enhancedArticle) {
@@ -36,8 +48,24 @@ export async function POST(request: Request) {
       throw new Error('Failed to generate TLDR summary');
     }
 
-    return NextResponse.json({ summary: tldrSummary });
+    // Increment counter after successful API call
+    await rateLimiter.incrementCounter('openai');
+
+    return NextResponse.json({
+      summary: tldrSummary,
+      quotaRemaining: rateLimiter.getRemainingQuota('openai')
+    });
+
   } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json({
+        error: error.message,
+        resetTime: error.resetTime,
+        remaining: error.remaining,
+        total: error.total
+      }, { status: 429 });
+    }
+
     console.error('Error generating TLDR:', error);
     return NextResponse.json(
       { error: 'Failed to generate TLDR summary' },
