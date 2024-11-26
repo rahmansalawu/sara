@@ -2,53 +2,287 @@
 
 ## Core Infrastructure Improvements
 
-### 1. Basic Rate Limiting & Cost Control
+### 1. Data Types and Interfaces
+**Purpose:** Ensure consistent data flow throughout the application
+
+#### Requirements:
+- [ ] Core Data Types
+  ```typescript
+  interface TranscriptItem {
+    text: string;
+    offset: number;
+    duration: number;
+  }
+
+  interface TranscriptResponse {
+    transcript: TranscriptItem[];
+    videoTitle: string;
+    fromCache: boolean;
+    quotaRemaining?: number;
+  }
+
+  interface ApiResponse<T> {
+    data: T;
+    fromCache: boolean;
+    quotaRemaining?: number;
+    error?: string;
+  }
+  ```
+
+### 2. Rate Limiting & Cost Control
 **Purpose:** Protect personal usage from excessive API costs and rate limits
 
 #### Requirements:
-- [ ] Implement daily request tracking for OpenAI API
-  - Maximum 50 requests per day
-  - Track tokens used per request
-  - Reset counter at midnight UTC
-  - Store counts in localStorage
+- [ ] Rate Limiter Class Implementation
+  ```typescript
+  interface RateLimitConfig {
+    openai: {
+      maxRequests: number;  // 50 per day
+      resetPeriod: number;  // 24 hours in ms
+    };
+    youtube: {
+      maxQuota: number;    // 100 units per day
+      resetTime: string;   // "00:00" UTC
+    };
+  }
+  ```
+- [ ] Rate Limit Storage
+  ```typescript
+  interface RateLimitStore {
+    counter: number;
+    lastReset: number;
+    quotaUsed: number;
+  }
+  ```
+- [ ] Rate Limit Error Handling
+  - Implement RateLimitError class
+  - Return specific error codes (429 for rate limit)
+  - Include reset time in error response
 
-- [ ] YouTube API quota management
-  - Track daily API quota usage
-  - Maximum 100 requests per day
-  - Store and reset quota usage daily
-  - Warning when reaching 80% of limit
-
-- [ ] Error handling
-  - Clear error messages when limits reached
-  - Graceful degradation of features
-  - Option to reset limits manually
-  - Countdown timer until limit reset
-
-### 2. Simple Caching System
+### 3. Caching System
 **Purpose:** Optimize performance and reduce unnecessary API calls
 
 #### Requirements:
-- [ ] localStorage-based caching
-  - Cache structure:
-    ```typescript
-    interface VideoCache {
-      videoId: string;
-      transcript: string;
-      enhancedArticle: string;
-      tldrSummary: string;
-      timestamp: number;
-      expiresIn: number;
-    }
-    ```
-  - Cache duration: 7 days
-  - Maximum cache size: 50 videos
-  - LRU (Least Recently Used) cache eviction
+- [ ] Cache Manager Implementation
+  ```typescript
+  interface CacheConfig {
+    maxItems: number;      // 50 items
+    expiryTime: number;    // 7 days in ms
+    storageKey: string;    // "sara_cache"
+  }
 
-- [ ] Cache management
-  - Auto-cleanup of expired entries
-  - Manual cache clear option
-  - Cache hit/miss tracking
+  interface CacheItem<T> {
+    data: T;
+    timestamp: number;
+    expiresAt: number;
+  }
+
+  interface CacheStore {
+    [key: string]: CacheItem<any>;
+  }
+  ```
+- [ ] Cache Keys Format
+  ```typescript
+  const cacheKeys = {
+    transcript: (videoId: string) => `transcript_${videoId}`,
+    enhanced: (videoId: string) => `enhanced_${videoId}`,
+    tldr: (videoId: string) => `tldr_${videoId}`,
+  };
+  ```
+- [ ] Cache Operations
+  - Implement get, set, delete, clear methods
+  - Add cache hit/miss tracking
+  - Auto-cleanup of expired items
+  - LRU eviction when max items reached
+
+### 4. Error Handling
+**Purpose:** Provide consistent error handling across the application
+
+#### Requirements:
+- [ ] Error Types
+  ```typescript
+  interface AppError extends Error {
+    code: string;
+    status: number;
+    details?: any;
+  }
+  ```
+- [ ] Error Codes
+  ```typescript
+  enum ErrorCode {
+    RATE_LIMIT = 'RATE_LIMIT',
+    INVALID_INPUT = 'INVALID_INPUT',
+    API_ERROR = 'API_ERROR',
+    CACHE_ERROR = 'CACHE_ERROR',
+  }
+  ```
+- [ ] Error Responses
+  ```typescript
+  interface ErrorResponse {
+    error: string;
+    code: ErrorCode;
+    status: number;
+    details?: any;
+  }
+  ```
+
+### 5. Testing Infrastructure
+**Purpose:** Ensure reliability and catch regressions
+
+#### Requirements:
+- [ ] Unit Tests
+  - RateLimiter class
+  - CacheManager class
+  - Error handling utilities
+  - Data transformation functions
+
+- [ ] Integration Tests
+  - API routes with mocked external services
+  - Component rendering with different props
+  - Error boundary behavior
+
+- [ ] Test Utilities
+  ```typescript
+  interface MockConfig {
+    rateLimits?: Partial<RateLimitConfig>;
+    cache?: Partial<CacheConfig>;
+    apis?: {
+      youtube?: boolean;
+      openai?: boolean;
+    };
+  }
+  ```
+
+## Component Requirements
+
+### 1. VideoTranscript Component
+**Purpose:** Main component for displaying video transcript and enhanced content
+
+#### Requirements:
+- [ ] Props Interface
+  ```typescript
+  interface VideoTranscriptProps {
+    videoId: string;
+    initialData?: {
+      transcript?: TranscriptResponse;
+      enhanced?: string;
+      tldr?: string;
+    };
+  }
+  ```
+- [ ] State Management
+  ```typescript
+  interface VideoTranscriptState {
+    loading: boolean;
+    error: Error | null;
+    transcript: TranscriptItem[];
+    videoTitle: string;
+    thumbnailUrl: string;
+    showOriginal: boolean;
+  }
+  ```
+- [ ] Error States
+  - Loading skeleton
+  - Error message display
+  - Retry mechanism
+
+### 2. EnhancedArticle Component
+**Purpose:** Display AI-enhanced version of transcript
+
+#### Requirements:
+- [ ] Props Interface
+  ```typescript
+  interface EnhancedArticleProps {
+    transcript: TranscriptItem[];
+    videoId: string;
+    cachedArticle?: string;
+    onArticleGenerated?: (article: string) => void;
+  }
+  ```
+- [ ] Error Handling
+  - Loading state
+  - Error display
   - Cache status indicator
+
+### 3. TLDRSummary Component
+**Purpose:** Display concise summary of video content
+
+#### Requirements:
+- [ ] Props Interface
+  ```typescript
+  interface TLDRSummaryProps {
+    transcript: TranscriptItem[];
+    videoId: string;
+    cachedSummary?: string;
+    onSummaryGenerated?: (summary: string) => void;
+  }
+  ```
+- [ ] Error States
+  - Loading skeleton
+  - Error message
+  - Cache indicator
+
+## API Routes
+
+### 1. Transcript Route
+**Purpose:** Fetch and return video transcript
+
+#### Requirements:
+- [ ] Input Validation
+  ```typescript
+  interface TranscriptRequest {
+    videoId: string;
+  }
+  ```
+- [ ] Response Format
+  ```typescript
+  interface TranscriptRouteResponse {
+    transcript: TranscriptItem[];
+    videoTitle: string;
+    fromCache: boolean;
+    quotaRemaining?: number;
+  }
+  ```
+
+### 2. Enhance Route
+**Purpose:** Generate enhanced article from transcript
+
+#### Requirements:
+- [ ] Input Validation
+  ```typescript
+  interface EnhanceRequest {
+    transcript: TranscriptItem[];
+    videoId: string;
+  }
+  ```
+- [ ] Response Format
+  ```typescript
+  interface EnhanceRouteResponse {
+    article: string;
+    fromCache: boolean;
+    quotaRemaining?: number;
+  }
+  ```
+
+### 3. TLDR Route
+**Purpose:** Generate concise summary from transcript
+
+#### Requirements:
+- [ ] Input Validation
+  ```typescript
+  interface TLDRRequest {
+    transcript: TranscriptItem[];
+    videoId: string;
+  }
+  ```
+- [ ] Response Format
+  ```typescript
+  interface TLDRRouteResponse {
+    summary: string;
+    fromCache: boolean;
+    quotaRemaining?: number;
+  }
+  ```
 
 ## User Experience Features
 
