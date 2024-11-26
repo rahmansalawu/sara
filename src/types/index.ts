@@ -120,3 +120,17 @@ export const cacheKeys = {
   enhanced: (videoId: string) => `enhanced_${videoId}`,
   tldr: (videoId: string) => `tldr_${videoId}`,
 } as const;
+
+// Reading History Types
+export interface HistoryEntry {
+  videoId: string;
+  title: string;
+  viewedAt: Date;
+  readingProgress: number;
+  favorite: boolean;
+}
+
+export interface ReadingHistoryStore {
+  entries: HistoryEntry[];
+  lastUpdated: Date;
+}
