@@ -7,12 +7,12 @@ export class CacheManager {
   private config: CacheConfig;
 
   private constructor() {
-    this.cache = this.loadCache();
     this.config = {
       maxItems: 50,
       expiryTime: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
       storageKey: 'sara_cache',
     };
+    this.cache = this.loadCache();
     this.cleanExpiredItems();
   }
 

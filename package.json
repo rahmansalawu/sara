@@ -19,7 +19,10 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "typescript": "^5.3.2",
-    "youtube-transcript-api": "^1.1.2"
+    "youtube-transcript-api": "^1.1.2",
+    "@react-spring/web": "^9.7.3",
+    "@use-gesture/react": "^10.3.0",
+    "googleapis": "^129.0.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",

@@ -66,12 +66,10 @@ describe('RateLimiter', () => {
     // Try to exceed OpenAI limit
     for (let i = 0; i < 51; i++) {
       if (i < 50) {
-        const canProceed = await rateLimiter.checkLimit('openai');
-        expect(canProceed).toBe(true);
+        await expect(rateLimiter.checkLimit('openai')).resolves.toBe(true);
         await rateLimiter.incrementCounter('openai');
       } else {
-        const canProceed = await rateLimiter.checkLimit('openai');
-        expect(canProceed).toBe(false);
+        await expect(rateLimiter.checkLimit('openai')).rejects.toThrow('Rate limit exceeded for openai');
       }
     }
   });

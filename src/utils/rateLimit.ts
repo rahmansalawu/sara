@@ -99,21 +99,24 @@ export class RateLimiter {
     }
 
     const store = this.getStore(service);
-    const config = this.config[service as keyof RateLimitConfig];
-
-    if (service === 'openai' && store.counter >= config.maxRequests) {
-      const resetTime = new Date(store.lastReset + this.config.openai.resetPeriod);
-      throw new RateLimitError(service, resetTime, config.maxRequests - store.counter, config.maxRequests);
-    }
-
-    if (service === 'youtube' && store.quotaUsed >= config.maxQuota) {
-      const [hours, minutes] = this.config.youtube.resetTime.split(':').map(Number);
-      const resetTime = new Date();
-      resetTime.setUTCHours(hours, minutes, 0, 0);
-      if (resetTime.getTime() <= Date.now()) {
-        resetTime.setDate(resetTime.getDate() + 1);
+    
+    if (service === 'openai') {
+      const config = this.config.openai;
+      if (store.counter >= config.maxRequests) {
+        const resetTime = new Date(store.lastReset + config.resetPeriod);
+        throw new RateLimitError(service, resetTime, config.maxRequests - store.counter, config.maxRequests);
       }
-      throw new RateLimitError(service, resetTime, config.maxQuota - store.quotaUsed, config.maxQuota);
+    } else if (service === 'youtube') {
+      const config = this.config.youtube;
+      if (store.quotaUsed >= config.maxQuota) {
+        const [hours, minutes] = config.resetTime.split(':').map(Number);
+        const resetTime = new Date();
+        resetTime.setUTCHours(hours, minutes, 0, 0);
+        if (resetTime.getTime() <= Date.now()) {
+          resetTime.setDate(resetTime.getDate() + 1);
+        }
+        throw new RateLimitError(service, resetTime, config.maxQuota - store.quotaUsed, config.maxQuota);
+      }
     }
 
     return true;
@@ -132,12 +135,11 @@ export class RateLimiter {
     }
 
     const store = this.getStore(service);
-    const config = this.config[service as keyof RateLimitConfig];
-
+    
     if (service === 'openai') {
-      return config.maxRequests - store.counter;
+      return this.config.openai.maxRequests - store.counter;
     } else if (service === 'youtube') {
-      return config.maxQuota - store.quotaUsed;
+      return this.config.youtube.maxQuota - store.quotaUsed;
     }
 
     return 0;
@@ -149,15 +151,16 @@ export class RateLimiter {
     }
 
     const store = this.getStore(service);
-    const config = this.config[service as keyof RateLimitConfig];
-
+    
     if (service === 'openai') {
+      const config = this.config.openai;
       return {
         used: store.counter,
         remaining: config.maxRequests - store.counter,
         total: config.maxRequests,
       };
     } else if (service === 'youtube') {
+      const config = this.config.youtube;
       return {
         used: store.quotaUsed,
         remaining: config.maxQuota - store.quotaUsed,

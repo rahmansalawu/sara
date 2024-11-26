@@ -1,12 +1,36 @@
 # Sara - YouTube Transcript Reader Features PRD
 
-## Core Infrastructure Improvements
+## 1. Infrastructure Layer
 
-### 1. Data Types and Interfaces
+### 1.1 External API Integration
+**Purpose:** Handle communication with external services
+
+#### Requirements:
+- [x] YouTube API Integration
+  ```typescript
+  interface YouTubeConfig {
+    apiKey: string;
+    quotaUnits: {
+      videoDetails: number;
+      transcriptList: number;
+    };
+  }
+  ```
+- [ ] OpenAI API Integration
+  ```typescript
+  interface OpenAIConfig {
+    apiKey: string;
+    model: string;
+    maxTokens: number;
+    temperature: number;
+  }
+  ```
+
+### 1.2 Data Types and Interfaces
 **Purpose:** Ensure consistent data flow throughout the application
 
 #### Requirements:
-- [ ] Core Data Types
+- [x] Core Data Types
   ```typescript
   interface TranscriptItem {
     text: string;
@@ -29,11 +53,11 @@
   }
   ```
 
-### 2. Rate Limiting & Cost Control
+### 1.3 Rate Limiting & Cost Control
 **Purpose:** Protect personal usage from excessive API costs and rate limits
 
 #### Requirements:
-- [ ] Rate Limiter Class Implementation
+- [x] Rate Limiter Class Implementation
   ```typescript
   interface RateLimitConfig {
     openai: {
@@ -46,7 +70,7 @@
     };
   }
   ```
-- [ ] Rate Limit Storage
+- [x] Rate Limit Storage
   ```typescript
   interface RateLimitStore {
     counter: number;
@@ -54,52 +78,34 @@
     quotaUsed: number;
   }
   ```
-- [ ] Rate Limit Error Handling
-  - Implement RateLimitError class
+- [x] Rate Limit Error Handling
+  - Implemented RateLimitError class
   - Return specific error codes (429 for rate limit)
   - Include reset time in error response
 
-### 3. Caching System
+### 1.4 Caching System
 **Purpose:** Optimize performance and reduce unnecessary API calls
 
 #### Requirements:
-- [ ] Cache Manager Implementation
+- [x] Cache Manager Implementation
   ```typescript
   interface CacheConfig {
     maxItems: number;      // 50 items
     expiryTime: number;    // 7 days in ms
     storageKey: string;    // "sara_cache"
   }
-
-  interface CacheItem<T> {
-    data: T;
-    timestamp: number;
-    expiresAt: number;
-  }
-
-  interface CacheStore {
-    [key: string]: CacheItem<any>;
-  }
   ```
-- [ ] Cache Keys Format
-  ```typescript
-  const cacheKeys = {
-    transcript: (videoId: string) => `transcript_${videoId}`,
-    enhanced: (videoId: string) => `enhanced_${videoId}`,
-    tldr: (videoId: string) => `tldr_${videoId}`,
-  };
-  ```
-- [ ] Cache Operations
-  - Implement get, set, delete, clear methods
-  - Add cache hit/miss tracking
+- [x] Cache Operations
+  - Implemented get, set, delete, clear methods
+  - Added cache hit/miss tracking
   - Auto-cleanup of expired items
   - LRU eviction when max items reached
 
-### 4. Error Handling
+### 1.5 Error Handling
 **Purpose:** Provide consistent error handling across the application
 
 #### Requirements:
-- [ ] Error Types
+- [x] Error Types
   ```typescript
   interface AppError extends Error {
     code: string;
@@ -107,7 +113,7 @@
     details?: any;
   }
   ```
-- [ ] Error Codes
+- [x] Error Codes
   ```typescript
   enum ErrorCode {
     RATE_LIMIT = 'RATE_LIMIT',
@@ -116,46 +122,10 @@
     CACHE_ERROR = 'CACHE_ERROR',
   }
   ```
-- [ ] Error Responses
-  ```typescript
-  interface ErrorResponse {
-    error: string;
-    code: ErrorCode;
-    status: number;
-    details?: any;
-  }
-  ```
 
-### 5. Testing Infrastructure
-**Purpose:** Ensure reliability and catch regressions
+## 2. Core Features
 
-#### Requirements:
-- [ ] Unit Tests
-  - RateLimiter class
-  - CacheManager class
-  - Error handling utilities
-  - Data transformation functions
-
-- [ ] Integration Tests
-  - API routes with mocked external services
-  - Component rendering with different props
-  - Error boundary behavior
-
-- [ ] Test Utilities
-  ```typescript
-  interface MockConfig {
-    rateLimits?: Partial<RateLimitConfig>;
-    cache?: Partial<CacheConfig>;
-    apis?: {
-      youtube?: boolean;
-      openai?: boolean;
-    };
-  }
-  ```
-
-## Component Requirements
-
-### 1. VideoTranscript Component
+### 2.1 Video Transcript Component
 **Purpose:** Main component for displaying video transcript and enhanced content
 
 #### Requirements:
@@ -170,61 +140,56 @@
     };
   }
   ```
-- [ ] State Management
-  ```typescript
-  interface VideoTranscriptState {
-    loading: boolean;
-    error: Error | null;
-    transcript: TranscriptItem[];
-    videoTitle: string;
-    thumbnailUrl: string;
-    showOriginal: boolean;
-  }
-  ```
-- [ ] Error States
-  - Loading skeleton
-  - Error message display
-  - Retry mechanism
+- [ ] Component Implementation
+  - Video metadata display
+  - Transcript rendering
+  - Loading states
+  - Error handling
+  - Progress tracking
 
-### 2. EnhancedArticle Component
-**Purpose:** Display AI-enhanced version of transcript
+### 2.2 Content Enhancement
+**Purpose:** Transform transcripts into readable articles
 
 #### Requirements:
-- [ ] Props Interface
+- [ ] Enhancement Service
   ```typescript
-  interface EnhancedArticleProps {
-    transcript: TranscriptItem[];
-    videoId: string;
-    cachedArticle?: string;
-    onArticleGenerated?: (article: string) => void;
+  interface EnhancementConfig {
+    maxLength: number;
+    style: 'academic' | 'casual' | 'professional';
+    format: 'markdown' | 'html';
   }
   ```
-- [ ] Error Handling
-  - Loading state
-  - Error display
-  - Cache status indicator
+- [ ] TLDR Generation
+  ```typescript
+  interface TLDRConfig {
+    maxLength: number;
+    bulletPoints: boolean;
+  }
+  ```
 
-### 3. TLDRSummary Component
-**Purpose:** Display concise summary of video content
+### 2.3 Reading History
+**Purpose:** Track and manage user's reading history
 
 #### Requirements:
-- [ ] Props Interface
+- [x] History Manager Implementation
   ```typescript
-  interface TLDRSummaryProps {
-    transcript: TranscriptItem[];
+  interface HistoryEntry {
     videoId: string;
-    cachedSummary?: string;
-    onSummaryGenerated?: (summary: string) => void;
+    title: string;
+    viewedAt: Date;
+    readingProgress: number;
+    favorite: boolean;
   }
   ```
-- [ ] Error States
-  - Loading skeleton
-  - Error message
-  - Cache indicator
+- [x] Storage Operations
+  - Add/update entries
+  - Track reading progress
+  - Mark favorites
+  - Export functionality
 
-## API Routes
+## 3. API Routes
 
-### 1. Transcript Route
+### 3.1 Transcript Route
 **Purpose:** Fetch and return video transcript
 
 #### Requirements:
@@ -244,102 +209,56 @@
   }
   ```
 
-### 2. Enhance Route
-**Purpose:** Generate enhanced article from transcript
+### 3.2 Enhancement Routes
+**Purpose:** Generate enhanced content from transcripts
 
 #### Requirements:
-- [ ] Input Validation
+- [ ] Enhance Route
   ```typescript
   interface EnhanceRequest {
     transcript: TranscriptItem[];
     videoId: string;
+    config?: EnhancementConfig;
   }
   ```
-- [ ] Response Format
-  ```typescript
-  interface EnhanceRouteResponse {
-    article: string;
-    fromCache: boolean;
-    quotaRemaining?: number;
-  }
-  ```
-
-### 3. TLDR Route
-**Purpose:** Generate concise summary from transcript
-
-#### Requirements:
-- [ ] Input Validation
+- [ ] TLDR Route
   ```typescript
   interface TLDRRequest {
     transcript: TranscriptItem[];
     videoId: string;
-  }
-  ```
-- [ ] Response Format
-  ```typescript
-  interface TLDRRouteResponse {
-    summary: string;
-    fromCache: boolean;
-    quotaRemaining?: number;
+    config?: TLDRConfig;
   }
   ```
 
-## User Experience Features
+## 4. User Experience Features
 
-### 1. Quick Wins - Phase 1
+### 4.1 Quick Wins - Phase 1
 **Purpose:** Enhance content discovery and navigation
 
 #### Requirements:
 - [ ] Trending Videos Feed
-  - Fetch top 10 trending videos
-  - Filter by:
-    - Language
-    - Duration (short/medium/long)
-    - Category (Education, Tech, etc.)
-  - Auto-refresh every 6 hours
-  - Save preferences locally
-
+  - Top 10 trending videos
+  - Filtering options
+  - Auto-refresh
 - [ ] Basic Swipe Interface
-  - Swipe left/right between videos
-  - Swipe up for full article
-  - Swipe down to minimize
+  - Video navigation
+  - Content view modes
   - Touch & mouse support
-  - Smooth animations
-  - Preload next video data
 
-### 2. Quick Wins - Phase 2
+### 4.2 Quick Wins - Phase 2
 **Purpose:** Improve personal content management
 
 #### Requirements:
-- [ ] Reading History
-  - Track last 50 viewed videos
-  - Store locally:
-    ```typescript
-    interface HistoryEntry {
-      videoId: string;
-      title: string;
-      viewedAt: Date;
-      readingProgress: number;
-      favorite: boolean;
-    }
-    ```
-  - Clear history option
-  - Export history functionality
-
 - [ ] Personal Preferences
-  - Theme selection (light/dark)
+  - Theme selection
   - Text size adjustment
-  - Reading progress tracking
-  - Default view mode (enhanced/original)
-  - Preferred language
-  - Save preferences locally
-
+  - Default view mode
+  - Language preference
 - [ ] Sharing Features
-  - Share as link
-  - Copy article text
-  - Export as PDF
-  - Social media sharing
-  - Share with reading progress
+  - Link sharing
+  - Text export
+  - PDF export
+  - Social media integration
 
 ## Technical Specifications
 
@@ -351,9 +270,36 @@
 
 ### Performance Targets
 - Initial load: < 2 seconds
-- Swipe response: < 100ms
 - Cache retrieval: < 50ms
 - Article generation: < 10 seconds
+
+### Performance Monitoring
+- [ ] Client-Side Metrics
+  ```typescript
+  interface PerformanceMetrics {
+    pageLoadTime: number;
+    timeToInteractive: number;
+    apiLatency: Record<string, number>;
+    cacheHitRate: number;
+  }
+  ```
+- [ ] Error Tracking
+  ```typescript
+  interface ErrorMetrics {
+    apiFailureRate: number;    // Target: < 1%
+    cacheMissRate: number;     // Target: < 5%
+    rateLimitHitRate: number;  // Target: < 2%
+  }
+  ```
+- [ ] Usage Analytics
+  ```typescript
+  interface UsageMetrics {
+    dailyActiveUsers: number;
+    averageSessionDuration: number;
+    mostViewedCategories: string[];
+    featureUsage: Record<string, number>;
+  }
+  ```
 
 ### Browser Support
 - Chrome (latest 2 versions)
@@ -361,26 +307,23 @@
 - Safari (latest 2 versions)
 - Edge (latest 2 versions)
 
-### Error Rates
-- API failures: < 1%
-- Cache misses: < 5%
-- Rate limit hits: < 2%
-
 ## Implementation Priority
-1. Basic Rate Limiting
-2. Simple Caching
-3. Reading History
-4. Trending Videos
-5. Swipe Interface
-6. Personal Preferences
-7. Sharing Features
-
-## Future Considerations
-- Offline support
-- Multiple language support
-- Browser extension
-- Mobile app version
-- Data sync across devices
+1. Infrastructure Layer
+   - External API Integration
+   - Rate Limiting
+   - Caching System
+   - Error Handling
+2. Core Features
+   - Video Transcript Component
+   - Content Enhancement
+   - Reading History
+3. API Routes
+   - Transcript Route
+   - Enhancement Routes
+4. User Experience
+   - Quick Wins Phase 1
+   - Quick Wins Phase 2
 
 ---
-Note: This PRD is focused on personal use and will be updated as requirements evolve.
+Note: This PRD is a living document and will be updated as requirements evolve.
+Last Updated: [Current Date]

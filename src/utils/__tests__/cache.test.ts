@@ -4,10 +4,15 @@ describe('CacheManager', () => {
   let cacheManager: CacheManager;
 
   beforeEach(() => {
+    jest.useFakeTimers();
     localStorage.clear();
     // Clear singleton instance
     (CacheManager as any).instance = null;
     cacheManager = CacheManager.getInstance();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   test('should store and retrieve data', () => {
@@ -19,11 +24,9 @@ describe('CacheManager', () => {
   });
 
   test('should handle expired entries', () => {
-    const testData = { test: 'data' };
-    // Set data with 1ms expiration
-    cacheManager.set('test-key', testData, 1);
+    cacheManager.set('test-key', 'test-value', 1); // 1ms expiry
     
-    // Wait for expiration
+    // Advance time by 2ms to ensure expiration
     jest.advanceTimersByTime(2);
     
     const retrieved = cacheManager.get('test-key');
@@ -37,7 +40,7 @@ describe('CacheManager', () => {
     }
 
     const stats = cacheManager.getStats();
-    expect(stats.totalEntries).toBe(50); // Max entries limit
+    expect(stats.totalItems).toBe(50); // Max entries limit
   });
 
   test('should persist cache in localStorage', () => {
@@ -57,9 +60,9 @@ describe('CacheManager', () => {
     cacheManager.set('test-key', testData);
     
     const stats = cacheManager.getStats();
-    expect(stats.totalEntries).toBe(1);
-    expect(stats.oldestEntry).toBeInstanceOf(Date);
-    expect(stats.newestEntry).toBeInstanceOf(Date);
+    expect(stats.totalItems).toBe(1);
+    expect(stats.oldestItem).toBeInstanceOf(Date);
+    expect(stats.newestItem).toBeInstanceOf(Date);
     expect(stats.totalSize).toBeGreaterThan(0);
   });
 
@@ -79,6 +82,6 @@ describe('CacheManager', () => {
     cacheManager.clear();
     
     const stats = cacheManager.getStats();
-    expect(stats.totalEntries).toBe(0);
+    expect(stats.totalItems).toBe(0);
   });
 });
